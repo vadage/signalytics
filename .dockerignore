@@ -1,0 +1,10 @@
+**/*.md
+**/.dockerignore
+**/.git/
+**/.gitattributes
+**/.gitignore
+**/compose.yml
+**/Dockerfile
+.github/
+conf/
+target/

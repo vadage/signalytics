@@ -1,0 +1,18 @@
+:80 {
+    log {
+            output net udp/signalytics:9000
+            format filter {
+                              wrap json
+                              fields {
+                                         request delete
+                                         resp_headers delete
+                                     }
+                          }
+        }
+
+    log_append tls_client_ciphers_sha1 {header.X-Tls-Client-Ciphers-Sha1}
+    log_append tls_client_extensions_sha1 {header.X-Tls-Client-Extensions-Sha1}
+    log_append tls_client_hello_length {header.X-Tls-Client-Hello-Length}
+
+    respond "ok"
+}

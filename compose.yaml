@@ -1,0 +1,29 @@
+services:
+  signalytics:
+    build:
+      context: .
+      target: dev
+    environment:
+      DATABASE_URL: mysql://root:app@mysql:3306/app
+    volumes:
+      - .:/app
+
+  caddy:
+    image: caddy:2.11
+    ports:
+      - "8080:80"
+    volumes:
+      - ./conf/Caddyfile:/etc/caddy/Caddyfile
+
+  mysql:
+    image: mysql:9.5
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: app
+      MYSQL_DATABASE: app
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
