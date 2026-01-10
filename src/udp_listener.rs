@@ -4,7 +4,7 @@ use sqlx::MySqlPool;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 pub async fn run_upd_listener(tx: Sender<TlsFingerprint>) {
-    let mut buf = [0u8; 4096];
+    let mut buf = [0u8; 1024];
     let socket = tokio::net::UdpSocket::bind("0.0.0.0:9000").await.unwrap();
     println!("Listening on {}", socket.local_addr().unwrap());
 
