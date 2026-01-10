@@ -1,7 +1,7 @@
 # Signalytics
 A microservice for collecting aggregated TLS fingerprints from HTTP logs.
 
-To gain analytical insights on TLS signals / fingerprints, that hit 
+To gain analytical insights on TLS signals / fingerprints, that hit your server, so you can act on trends on your firewall.
 
 ## Features
 * Aggregates TLS fingerprints: ciphers, extensions and ClientHello length.
