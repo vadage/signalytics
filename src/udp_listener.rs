@@ -14,12 +14,12 @@ pub async fn run_upd_listener(tx: Sender<TlsFingerprint>) {
             Err(_) => continue,
         };
 
-        let log: TlsFingerprint = match serde_json::from_slice(&buf[..len]) {
-            Ok(log) => log,
+        let fingerprint: TlsFingerprint = match serde_json::from_slice(&buf[..len]) {
+            Ok(fingerprint) => fingerprint,
             Err(_) => continue,
         };
 
-        let _ = tx.try_send(log);
+        let _ = tx.try_send(fingerprint);
     }
 }
 
@@ -30,8 +30,8 @@ pub async fn process_batches(pool: MySqlPool, mut rx: Receiver<TlsFingerprint>) 
 
     loop {
         tokio::select! {
-            Some(log) = rx.recv() => {
-                buffer.push(log);
+            Some(fingerprint) = rx.recv() => {
+                buffer.push(fingerprint);
                 if buffer.len() >= batch_size {
                     let b = std::mem::replace(&mut buffer, Vec::with_capacity(batch_size));
                     let p = pool.clone();
