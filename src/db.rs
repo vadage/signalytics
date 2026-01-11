@@ -16,14 +16,6 @@ pub async fn flush_batch(
         values.join(", ")
     );
     let mut query = sqlx::query(&sql);
-    for fingerprint in buffer.iter() {
-        query = query
-            .bind(&fingerprint.tls_client_ciphers_sha1)
-            .bind(&fingerprint.tls_client_extensions_sha1)
-            .bind(fingerprint.tls_client_hello_length);
-    }
-
-    query.execute(&mut *tx).await?;
 
     let values_stats = vec!["(CURRENT_DATE, ?, ?, ?, 1)"; buffer.len()];
     let sql_stats = format!(
@@ -31,13 +23,19 @@ pub async fn flush_batch(
         values_stats.join(", ")
     );
     let mut query_stats = sqlx::query(&sql_stats);
+
     for fingerprint in buffer.iter() {
+        query = query
+            .bind(&fingerprint.tls_client_ciphers_sha1)
+            .bind(&fingerprint.tls_client_extensions_sha1)
+            .bind(fingerprint.tls_client_hello_length);
         query_stats = query_stats
             .bind(&fingerprint.tls_client_ciphers_sha1)
             .bind(&fingerprint.tls_client_extensions_sha1)
             .bind(fingerprint.tls_client_hello_length);
     }
 
+    query.execute(&mut *tx).await?;
     query_stats.execute(&mut *tx).await?;
 
     tx.commit().await?;

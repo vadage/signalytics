@@ -33,12 +33,17 @@ curl 'http://localhost:8080/' \
 ```
 
 ### Production
+Make sure to only forward the values from trusted sources.
 ```shell
 docker run \
   -e DATABASE_URL="mysql://user:password@host:port/dbname" \
   ghcr.io/vadage/signalytics:latest
 ```
-Make sure to only forward the headers from trusted sources.
+**Additional options**
+
+| Option      | Default | Description                                                                          |
+|-------------|---------|--------------------------------------------------------------------------------------|
+| `LOG_LEVEL` | info    | Sets the verbosity of logs. Can be `off`, `trace`, `debug`, `info`, `warn`, `error`. |
 
 ### JSON log format
 The log has to contain at least this structure. It's recommended to use a small payload for higher throughput and reliability.
