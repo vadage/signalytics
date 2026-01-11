@@ -5,11 +5,12 @@ To gain analytical insights on TLS signals / fingerprints, that hit your server,
 
 ## Features
 * Aggregates TLS fingerprints: ciphers, extensions and ClientHello length.
-    * The fields can be provided by Cloudflare on the Free tier. [See their Docs](https://developers.cloudflare.com/ruleset-engine/rules-language/fields/reference/?field-category=SSL%2FTLS).
+    * The fields can be provided by Cloudflare on the Free tier. [See their Docs](https://developers.cloudflare.com/rules/transform/request-header-modification/reference/fields-functions/).
 * Batch writes to MySQL for efficient storage.
-* Example integration with Caddy logs included in [conf/Caddyfile](conf/Caddyfile)
-* Accept logs via UDP on port ``9000``
+* Example integration included for [Caddy](conf/Caddyfile) and [Nginx](conf/nginx.conf).
+* Accept logs via UDP on port ``9000``.
 * Easily extensible for other webservers via JSON formatting.
+* Syslog support for both RFC 3164 and RFC 5424.
 
 ## Getting started
 
@@ -37,6 +38,7 @@ docker run \
   -e DATABASE_URL="mysql://user:password@host:port/dbname" \
   ghcr.io/vadage/signalytics:latest
 ```
+Make sure to only forward the headers from trusted sources.
 
 ### JSON log format
 The log has to contain at least this structure. It's recommended to use a small payload for higher throughput and reliability.

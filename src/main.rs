@@ -3,6 +3,7 @@ use crate::udp_listener::{process_batches, run_upd_listener};
 
 mod db;
 mod models;
+mod parser;
 mod udp_listener;
 
 #[tokio::main]
@@ -14,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     println!("Connected to database, applying migrations.");
-    sqlx::migrate!("./migrations").run(&pool).await?;
+    sqlx::migrate!().run(&pool).await?;
 
     let (tx, rx) = tokio::sync::mpsc::channel::<TlsFingerprint>(20_000);
 

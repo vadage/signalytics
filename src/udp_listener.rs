@@ -1,6 +1,6 @@
 use crate::db::flush_batch;
 use crate::models::TlsFingerprint;
-use sqlx::MySqlPool;
+use crate::parser::parse_fingerprint;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 pub async fn run_upd_listener(tx: Sender<TlsFingerprint>) {
@@ -14,7 +14,7 @@ pub async fn run_upd_listener(tx: Sender<TlsFingerprint>) {
             Err(_) => continue,
         };
 
-        let fingerprint: TlsFingerprint = match serde_json::from_slice(&buf[..len]) {
+        let fingerprint: TlsFingerprint = match parse_fingerprint(&buf[..len]) {
             Ok(fingerprint) => fingerprint,
             Err(_) => continue,
         };
@@ -23,7 +23,7 @@ pub async fn run_upd_listener(tx: Sender<TlsFingerprint>) {
     }
 }
 
-pub async fn process_batches(pool: MySqlPool, mut rx: Receiver<TlsFingerprint>) {
+pub async fn process_batches(pool: sqlx::MySqlPool, mut rx: Receiver<TlsFingerprint>) {
     let batch_size = 100;
     let mut buffer = Vec::with_capacity(batch_size);
     let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(50));

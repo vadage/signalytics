@@ -9,3 +9,4 @@ tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "macros", "ne
 serde = { version = "1.0.228", features = ["derive"] }
 sqlx = { version = "0.8.6", features = ["mysql", "runtime-tokio"] }
 anyhow = "1.0.100"
+syslog_loose = "0.23.0"
