@@ -1,7 +1,7 @@
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct TlsFingerprint {
     pub tls_client_ciphers_sha1: String,
     pub tls_client_extensions_sha1: String,
