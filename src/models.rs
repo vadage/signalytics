@@ -1,7 +1,7 @@
+use serde::Deserialize;
 use serde::de::Error;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TlsFingerprint {
     pub tls_client_ciphers_sha1: String,
     pub tls_client_extensions_sha1: String,
@@ -9,14 +9,12 @@ pub struct TlsFingerprint {
     pub tls_client_hello_length: i64,
 }
 
-fn from_string<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+fn from_string<'de, D>(deserializer: D) -> Result<i64, D::Error>
 where
     D: serde::Deserializer<'de>,
-    T: std::str::FromStr,
-    T::Err: std::fmt::Display,
 {
-    let value = String::deserialize(deserializer)?;
+    let value = <&str>::deserialize(deserializer)?;
     value
-        .parse::<T>()
+        .parse::<i64>()
         .map_err(|e| D::Error::custom(format!("Failed to parse '{value}': {e}")))
 }

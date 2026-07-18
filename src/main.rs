@@ -1,5 +1,5 @@
 use crate::models::TlsFingerprint;
-use crate::udp_listener::run_upd_listener;
+use crate::udp_listener::run_udp_listener;
 use crate::worker::process_batches;
 use std::env::var as env_var;
 use tracing::info;
@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Connecting to database");
     let pool = sqlx::mysql::MySqlPoolOptions::new()
-        .max_connections(16)
+        .max_connections(4)
         .connect(&env_var("DATABASE_URL")?)
         .await?;
 
@@ -33,7 +33,9 @@ async fn main() -> anyhow::Result<()> {
 
     let (tx, rx) = tokio::sync::mpsc::channel::<TlsFingerprint>(20_000);
 
-    tokio::spawn(run_upd_listener(tx));
+    let socket = tokio::net::UdpSocket::bind("0.0.0.0:9000").await?;
+    info!(addr = ?socket.local_addr()?, "Listening for UDP packets");
+    tokio::spawn(run_udp_listener(socket, tx));
 
     process_batches(pool, rx).await;
 

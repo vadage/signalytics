@@ -18,5 +18,5 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"
-strip = "debuginfo"
+strip = "symbols"
 debug = false
