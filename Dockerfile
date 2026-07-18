@@ -1,4 +1,4 @@
-FROM rust:1.92-alpine3.23 AS base
+FROM rust:1.94-alpine3.23 AS base
 
 WORKDIR /app
 

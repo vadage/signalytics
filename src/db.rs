@@ -1,4 +1,5 @@
 use crate::models::TlsFingerprint;
+use sqlx::AssertSqlSafe;
 use std::collections::HashMap;
 
 fn insert_sql(rows: usize) -> String {
@@ -41,10 +42,8 @@ pub async fn flush_batch(
 
     let mut tx = pool.begin().await?;
 
-    let sql = insert_sql(rows.len());
-    let sql_stats = stats_sql(rows.len());
-    let mut query = sqlx::query(&sql);
-    let mut query_stats = sqlx::query(&sql_stats);
+    let mut query = sqlx::query(AssertSqlSafe(insert_sql(rows.len())));
+    let mut query_stats = sqlx::query(AssertSqlSafe(stats_sql(rows.len())));
     for (fingerprint, count) in &rows {
         query = query
             .bind(&fingerprint.tls_client_ciphers_sha1)
