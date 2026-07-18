@@ -6,23 +6,24 @@ EXPOSE 9000/udp
 
 FROM base AS dev
 
-RUN rustup component add rustfmt clippy \
-    && cargo install cargo-audit --locked
+ENV CARGO_TARGET_DIR=/target
 
-CMD ["cargo", "run"]
+RUN apk add --no-cache watchexec cargo-audit \
+    && rustup component add rustfmt clippy
+
+CMD ["watchexec", "--restart", "--exts", "rs,toml", "--", "cargo", "run"]
 
 FROM base AS builder
 
-COPY Cargo.toml Cargo.lock ./
 COPY . .
-RUN cargo build --release
+RUN cargo build --release --locked
 
-FROM alpine:3.23 AS runner
+FROM scratch AS runner
 
-WORKDIR /app
+COPY --from=builder /app/target/release/signalytics /signalytics
 
-COPY --from=builder /app/target/release/signalytics /app/signalytics
+USER 65532:65532
 
 EXPOSE 9000/udp
 
-CMD ["/app/signalytics"]
+CMD ["/signalytics"]
