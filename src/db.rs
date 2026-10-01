@@ -18,6 +18,18 @@ fn stats_sql(rows: usize) -> String {
     )
 }
 
+/// Sorted by hash so the result only changes when the set changes.
+const TOP_CIPHERS_SQL: &str = "SELECT tls_client_ciphers_sha1 FROM (
+    SELECT tls_client_ciphers_sha1, SUM(request_count) AS hits
+    FROM tls_fingerprint_daily_stats
+    WHERE stat_date >= CURDATE() - INTERVAL ? DAY
+    GROUP BY tls_client_ciphers_sha1
+    HAVING COUNT(DISTINCT stat_date) >= ? AND hits > ?
+    ORDER BY hits DESC, tls_client_ciphers_sha1
+    LIMIT ?
+) fp
+ORDER BY tls_client_ciphers_sha1";
+
 /// Sorted so concurrent flushes acquire row locks in the same order, avoiding upsert deadlocks.
 fn aggregate(buffer: Vec<TlsFingerprint>) -> Vec<(TlsFingerprint, u64)> {
     let mut counts: HashMap<TlsFingerprint, u64> = HashMap::new();
@@ -31,7 +43,7 @@ fn aggregate(buffer: Vec<TlsFingerprint>) -> Vec<(TlsFingerprint, u64)> {
 }
 
 pub async fn flush_batch(
-    pool: &sqlx::Pool<sqlx::MySql>,
+    pool: &sqlx::MySqlPool,
     buffer: Vec<TlsFingerprint>,
 ) -> anyhow::Result<()> {
     if buffer.is_empty() {
@@ -61,6 +73,23 @@ pub async fn flush_batch(
 
     tx.commit().await?;
     Ok(())
+}
+
+pub async fn top_ciphers(
+    pool: &sqlx::MySqlPool,
+    days: u32,
+    min_days: u32,
+    min_hits: u64,
+    limit: u32,
+) -> anyhow::Result<Vec<String>> {
+    let ciphers = sqlx::query_scalar(TOP_CIPHERS_SQL)
+        .bind(days)
+        .bind(min_days)
+        .bind(min_hits)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+    Ok(ciphers)
 }
 
 #[cfg(test)]

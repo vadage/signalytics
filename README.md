@@ -9,6 +9,7 @@ To gain analytical insights on TLS signals / fingerprints, that hit your server,
 * Batch writes to MySQL for efficient storage.
 * Example integration included for [Caddy](conf/Caddyfile) and [Nginx](conf/nginx.conf).
 * Accept logs via UDP on port ``9000``.
+* Export current fingerprints and serve health checks via HTTP on TCP port ``9000``.
 * Easily extensible for other webservers via JSON formatting.
 * Syslog support for both RFC 3164 and RFC 5424.
 
@@ -45,6 +46,29 @@ docker run \
 |---------------------|---------|--------------------------------------------------------------------------------------|
 | `DATABASE_URL_FILE` |         | Path to a file containing the database URL. Takes precedence over `DATABASE_URL`.    |
 | `LOG_LEVEL`         | info    | Sets the verbosity of logs. Can be `off`, `trace`, `debug`, `info`, `warn`, `error`. |
+
+### HTTP endpoints
+| Endpoint            | Description                                                    |
+|---------------------|----------------------------------------------------------------|
+| `GET /`, `/healthz` | Health check. Responds with `200` once the service is running. |
+| `GET /fingerprints` | Most common cipher fingerprints, e.g. to build firewall rules. |
+
+**`/fingerprints` query parameters**
+
+| Parameter   | Default | Description                                                         |
+|-------------|---------|---------------------------------------------------------------------|
+| `days`      | 30      | Number of days to look back.                                        |
+| `min_days`  | 7       | Only include fingerprints seen on at least this many distinct days. |
+| `min_hits`  | 5       | Only include fingerprints with more requests than this.             |
+| `limit`     | 50      | Maximum number of fingerprints, most requested first.               |
+| `min_count` | 10      | Responds with `503` if fewer fingerprints are found.                |
+
+The fingerprints are sorted, so the response only changes when the set of fingerprints changes.
+```json
+{
+  "tls_client_ciphers_sha1": ["GXSPDLP4G3X+prK73a4wBuOaHRc="]
+}
+```
 
 ### JSON log format
 The log has to contain at least this structure. It's recommended to use a small payload for higher throughput and reliability.

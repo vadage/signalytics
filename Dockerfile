@@ -3,6 +3,7 @@ FROM rust:1.94-alpine3.23 AS base
 WORKDIR /app
 
 EXPOSE 9000/udp
+EXPOSE 9000/tcp
 
 FROM base AS dev
 
@@ -25,5 +26,6 @@ COPY --from=builder /app/target/release/signalytics /signalytics
 USER 65532:65532
 
 EXPOSE 9000/udp
+EXPOSE 9000/tcp
 
 CMD ["/signalytics"]

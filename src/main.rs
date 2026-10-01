@@ -1,3 +1,4 @@
+use crate::http::run_http_server;
 use crate::models::TlsFingerprint;
 use crate::udp_listener::run_udp_listener;
 use crate::worker::process_batches;
@@ -5,6 +6,7 @@ use std::env::var as env_var;
 use tracing::info;
 
 mod db;
+mod http;
 mod models;
 mod parser;
 mod udp_listener;
@@ -41,6 +43,10 @@ async fn main() -> anyhow::Result<()> {
     let socket = tokio::net::UdpSocket::bind("0.0.0.0:9000").await?;
     info!(addr = ?socket.local_addr()?, "Listening for UDP packets");
     tokio::spawn(run_udp_listener(socket, tx));
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:9000").await?;
+    info!(addr = ?listener.local_addr()?, "Listening for HTTP requests");
+    tokio::spawn(run_http_server(listener, pool.clone()));
 
     process_batches(pool, rx).await;
 
