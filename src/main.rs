@@ -21,10 +21,15 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::subscriber::set_global_default(subscriber)?;
 
+    let database_url = match env_var("DATABASE_URL_FILE") {
+        Ok(path) => std::fs::read_to_string(path)?.trim().into(),
+        Err(_) => env_var("DATABASE_URL")?,
+    };
+
     info!("Connecting to database");
     let pool = sqlx::mysql::MySqlPoolOptions::new()
         .max_connections(4)
-        .connect(&env_var("DATABASE_URL")?)
+        .connect(&database_url)
         .await?;
 
     info!("Running migrations...");

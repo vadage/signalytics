@@ -41,9 +41,10 @@ docker run \
 ```
 **Additional options**
 
-| Option      | Default | Description                                                                          |
-|-------------|---------|--------------------------------------------------------------------------------------|
-| `LOG_LEVEL` | info    | Sets the verbosity of logs. Can be `off`, `trace`, `debug`, `info`, `warn`, `error`. |
+| Option              | Default | Description                                                                          |
+|---------------------|---------|--------------------------------------------------------------------------------------|
+| `DATABASE_URL_FILE` |         | Path to a file containing the database URL. Takes precedence over `DATABASE_URL`.    |
+| `LOG_LEVEL`         | info    | Sets the verbosity of logs. Can be `off`, `trace`, `debug`, `info`, `warn`, `error`. |
 
 ### JSON log format
 The log has to contain at least this structure. It's recommended to use a small payload for higher throughput and reliability.
