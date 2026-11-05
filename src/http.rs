@@ -1,42 +1,30 @@
 use crate::db::top_ciphers;
+use crate::models::FingerprintParams;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
-use serde::Deserialize;
 use serde_json::{Value, json};
 use sqlx::MySqlPool;
 use tokio::net::TcpListener;
 use tracing::{error, warn};
 
-#[derive(Deserialize, Debug, PartialEq)]
-#[serde(default)]
-struct FingerprintParams {
-    days: u32,
-    min_days: u32,
-    min_hits: u64,
-    limit: u32,
-    min_count: usize,
+#[derive(Clone)]
+struct AppState {
+    pool: MySqlPool,
+    retention_days: Option<u32>,
 }
 
-impl Default for FingerprintParams {
-    fn default() -> Self {
-        Self {
-            days: 30,
-            min_days: 7,
-            min_hits: 5,
-            limit: 50,
-            min_count: 10,
-        }
-    }
-}
-
-pub async fn run_http_server(listener: TcpListener, pool: MySqlPool) {
+pub async fn run_http_server(listener: TcpListener, pool: MySqlPool, retention_days: Option<u32>) {
+    let state = AppState {
+        pool,
+        retention_days,
+    };
     let app = Router::new()
         .route("/", get(health))
         .route("/healthz", get(health))
         .route("/fingerprints", get(fingerprints))
-        .with_state(pool);
+        .with_state(state);
 
     if let Err(e) = axum::serve(listener, app).await {
         error!(error = ?e, "HTTP server stopped");
@@ -48,18 +36,19 @@ async fn health() -> &'static str {
 }
 
 async fn fingerprints(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Query(params): Query<FingerprintParams>,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
-    let ciphers = top_ciphers(
-        &pool,
-        params.days,
-        params.min_days,
-        params.min_hits,
-        params.limit,
-    )
-    .await
-    .map_err(|e| {
+    if let Some(retention_days) = state.retention_days
+        && params.days > retention_days
+    {
+        warn!(
+            days = params.days,
+            retention_days, "Requested more days than are retained"
+        );
+    }
+
+    let ciphers = top_ciphers(&state.pool, &params).await.map_err(|e| {
         error!(error = ?e, "Failed to query fingerprints");
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -107,11 +96,16 @@ mod tests {
             days: 7,
             min_days: 1,
             min_hits: 0,
+            min_prefixes: 2,
+            min_asns: 3,
+            min_hosts: 4,
             limit: 10,
             min_count: 1,
         };
         assert_eq!(
-            parse("?days=7&min_days=1&min_hits=0&limit=10&min_count=1"),
+            parse(
+                "?days=7&min_days=1&min_hits=0&min_prefixes=2&min_asns=3&min_hosts=4&limit=10&min_count=1"
+            ),
             Ok(expected)
         );
     }

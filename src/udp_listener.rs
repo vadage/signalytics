@@ -4,7 +4,11 @@ use tokio::net::UdpSocket;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, warn};
 
-pub async fn run_udp_listener(socket: UdpSocket, tx: Sender<TlsFingerprint>) {
+pub async fn run_udp_listener(
+    socket: UdpSocket,
+    tx: Sender<TlsFingerprint>,
+    key: Option<[u8; 32]>,
+) {
     let mut buf = [0u8; 4096];
 
     loop {
@@ -16,8 +20,8 @@ pub async fn run_udp_listener(socket: UdpSocket, tx: Sender<TlsFingerprint>) {
             }
         };
 
-        let fingerprint: TlsFingerprint = match parse_fingerprint(&buf[..len]) {
-            Ok(fingerprint) => fingerprint,
+        let fingerprint = match parse_fingerprint(&buf[..len]) {
+            Ok(line) => line.into_fingerprint(key.as_ref()),
             Err(e) => {
                 debug!(error = ?e, "Failed to parse fingerprint, skipping packet");
                 continue;

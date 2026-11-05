@@ -11,6 +11,9 @@
         }
 
     log_append tls_client_ciphers_sha1 {header.X-Tls-Client-Ciphers-Sha1}
+    log_append client_ip {header.Cf-Connecting-Ip}
+    log_append client_asn {header.X-Client-Asn}
+    log_append host {host}
 
     respond "ok"
 }
