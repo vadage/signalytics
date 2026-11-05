@@ -34,29 +34,42 @@ fn hosts_sql(rows: usize) -> String {
     )
 }
 
-const TOP_CIPHERS_SQL: &str = "SELECT s.tls_client_ciphers_sha1
-    FROM (
-        SELECT tls_client_ciphers_sha1, COUNT(DISTINCT stat_date) AS days, SUM(request_count) AS hits
-        FROM tls_fingerprint_daily_stats
-        WHERE stat_date > CURDATE() - INTERVAL ? DAY
-        GROUP BY tls_client_ciphers_sha1
-    ) s
-    LEFT JOIN (
-        SELECT tls_client_ciphers_sha1, COUNT(DISTINCT client_prefix_hash) AS prefixes, COUNT(DISTINCT client_asn) AS asns
-        FROM tls_fingerprint_daily_clients
-        WHERE stat_date > CURDATE() - INTERVAL ? DAY
-        GROUP BY tls_client_ciphers_sha1
-    ) c USING (tls_client_ciphers_sha1)
-    LEFT JOIN (
-        SELECT tls_client_ciphers_sha1, COUNT(DISTINCT host) AS hosts
-        FROM tls_fingerprint_daily_hosts
-        WHERE stat_date > CURDATE() - INTERVAL ? DAY
-        GROUP BY tls_client_ciphers_sha1
-    ) h USING (tls_client_ciphers_sha1)
+fn top_ciphers_sql(families: usize) -> String {
+    let values = vec!["ROW(?, ?)"; families];
+    format!(
+        "WITH families (tls_client_ciphers_sha1, family) AS (VALUES {}),
+    s AS (
+        SELECT COALESCE(f.family, d.tls_client_ciphers_sha1) AS fingerprint, COUNT(DISTINCT d.stat_date) AS days, SUM(d.request_count) AS hits
+        FROM tls_fingerprint_daily_stats d
+        LEFT JOIN families f USING (tls_client_ciphers_sha1)
+        WHERE d.stat_date > CURDATE() - INTERVAL ? DAY
+        GROUP BY fingerprint
+    ),
+    c AS (
+        SELECT COALESCE(f.family, d.tls_client_ciphers_sha1) AS fingerprint, COUNT(DISTINCT d.client_prefix_hash) AS prefixes, COUNT(DISTINCT d.client_asn) AS asns
+        FROM tls_fingerprint_daily_clients d
+        LEFT JOIN families f USING (tls_client_ciphers_sha1)
+        WHERE d.stat_date > CURDATE() - INTERVAL ? DAY
+        GROUP BY fingerprint
+    ),
+    h AS (
+        SELECT COALESCE(f.family, d.tls_client_ciphers_sha1) AS fingerprint, COUNT(DISTINCT d.host) AS hosts
+        FROM tls_fingerprint_daily_hosts d
+        LEFT JOIN families f USING (tls_client_ciphers_sha1)
+        WHERE d.stat_date > CURDATE() - INTERVAL ? DAY
+        GROUP BY fingerprint
+    )
+    SELECT s.fingerprint
+    FROM s
+    LEFT JOIN c USING (fingerprint)
+    LEFT JOIN h USING (fingerprint)
     WHERE s.days >= ? AND s.hits > ?
         AND COALESCE(c.prefixes, 0) >= ? AND COALESCE(c.asns, 0) >= ? AND COALESCE(h.hosts, 0) >= ?
-    ORDER BY s.hits DESC, s.tls_client_ciphers_sha1
-    LIMIT ?";
+    ORDER BY s.hits DESC, s.fingerprint
+    LIMIT ?",
+        values.join(", ")
+    )
+}
 
 const DAILY_TABLES: [&str; 3] = [
     "tls_fingerprint_daily_stats",
@@ -148,11 +161,17 @@ pub async fn flush_batch(
     Ok(())
 }
 
+/// Returns fingerprints, where a whole cipher family counts as one entry named after the family.
 pub async fn top_ciphers(
     pool: &sqlx::MySqlPool,
+    families: &[(String, String)],
     params: &FingerprintParams,
 ) -> anyhow::Result<Vec<String>> {
-    let mut ciphers: Vec<String> = sqlx::query_scalar(TOP_CIPHERS_SQL)
+    let mut query = sqlx::query_scalar(AssertSqlSafe(top_ciphers_sql(families.len())));
+    for (hash, family) in families {
+        query = query.bind(hash).bind(family);
+    }
+    let fingerprints = query
         .bind(params.days)
         .bind(params.days)
         .bind(params.days)
@@ -164,9 +183,7 @@ pub async fn top_ciphers(
         .bind(params.limit)
         .fetch_all(pool)
         .await?;
-    // Sorted by hash so the result only changes when the set changes.
-    ciphers.sort();
-    Ok(ciphers)
+    Ok(fingerprints)
 }
 
 pub async fn delete_expired(pool: &sqlx::MySqlPool, retention_days: u32) -> anyhow::Result<u64> {
@@ -265,6 +282,13 @@ mod tests {
             distinct_hosts(&buffer),
             vec![("a", "x.com"), ("a", "y.com"), ("b", "x.com")]
         );
+    }
+
+    #[test]
+    fn test_top_ciphers_sql_placeholders() {
+        let sql = top_ciphers_sql(3);
+        assert!(sql.contains("VALUES ROW(?, ?), ROW(?, ?), ROW(?, ?))"));
+        assert_eq!(sql.matches('?').count(), 3 * 2 + 9);
     }
 
     #[test]

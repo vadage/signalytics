@@ -11,6 +11,7 @@ use tracing::{info, warn};
 mod cleanup;
 mod client;
 mod db;
+mod families;
 mod http;
 mod models;
 mod parser;
@@ -49,6 +50,9 @@ async fn main() -> anyhow::Result<()> {
         Err(_) => None,
     };
 
+    let families = families::load()?;
+    info!(count = families.len(), "Loaded cipher family fingerprints");
+
     info!("Connecting to database");
     let pool = sqlx::mysql::MySqlPoolOptions::new()
         .max_connections(4)
@@ -67,7 +71,12 @@ async fn main() -> anyhow::Result<()> {
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:9000").await?;
     info!(addr = ?listener.local_addr()?, "Listening for HTTP requests");
-    tokio::spawn(run_http_server(listener, pool.clone(), retention_days));
+    tokio::spawn(run_http_server(
+        listener,
+        pool.clone(),
+        retention_days,
+        families,
+    ));
 
     if let Some(days) = retention_days {
         tokio::spawn(run_cleanup(pool.clone(), days));

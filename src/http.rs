@@ -1,4 +1,5 @@
 use crate::db::top_ciphers;
+use crate::families::expand;
 use crate::models::FingerprintParams;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
@@ -6,6 +7,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use serde_json::{Value, json};
 use sqlx::MySqlPool;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::{error, warn};
 
@@ -13,12 +15,19 @@ use tracing::{error, warn};
 struct AppState {
     pool: MySqlPool,
     retention_days: Option<u32>,
+    families: Arc<Vec<(String, String)>>,
 }
 
-pub async fn run_http_server(listener: TcpListener, pool: MySqlPool, retention_days: Option<u32>) {
+pub async fn run_http_server(
+    listener: TcpListener,
+    pool: MySqlPool,
+    retention_days: Option<u32>,
+    families: Vec<(String, String)>,
+) {
     let state = AppState {
         pool,
         retention_days,
+        families: Arc::new(families),
     };
     let app = Router::new()
         .route("/", get(health))
@@ -48,18 +57,20 @@ async fn fingerprints(
         );
     }
 
-    let ciphers = top_ciphers(&state.pool, &params).await.map_err(|e| {
-        error!(error = ?e, "Failed to query fingerprints");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to query fingerprints",
-        )
-    })?;
+    let fingerprints = top_ciphers(&state.pool, &state.families, &params)
+        .await
+        .map_err(|e| {
+            error!(error = ?e, "Failed to query fingerprints");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to query fingerprints",
+            )
+        })?;
 
     // Refuse short lists, so a broken query or an empty database never replaces a good export.
-    if ciphers.len() < params.min_count {
+    if fingerprints.len() < params.min_count {
         warn!(
-            count = ciphers.len(),
+            count = fingerprints.len(),
             min_count = params.min_count,
             "Too few fingerprints found"
         );
@@ -69,7 +80,9 @@ async fn fingerprints(
         ));
     }
 
-    Ok(Json(json!({ "tls_client_ciphers_sha1": ciphers })))
+    Ok(Json(
+        json!({ "tls_client_ciphers_sha1": expand(fingerprints, &state.families) }),
+    ))
 }
 
 #[cfg(test)]

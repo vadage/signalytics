@@ -79,6 +79,13 @@ The fingerprints are sorted, so the response only changes when the set of finger
 }
 ```
 
+**Cipher families**
+
+Chrome and Safari prepend a random GREASE value ([RFC 8701](https://www.rfc-editor.org/rfc/rfc8701)) to their cipher list, so one browser shows up as 16 different hashes.
+The families in [`src/cipher_families.json`](src/cipher_families.json) are grouped, and the thresholds apply to the family as a whole.
+`limit` and `min_count` count a family as one fingerprint. When a family qualifies, all 16 of its hashes are exported, so the response can contain up to 15 extra hashes per family.
+Editing the file requires a rebuild.
+
 ### JSON log format
 The log has to contain at least this structure. It's recommended to use a small payload for higher throughput and reliability.
 ```json
