@@ -17,9 +17,6 @@ mod tests {
     fn test_parse_fingerprint_json() {
         let expected = TlsFingerprint {
             tls_client_ciphers_sha1: "GXSPDLP4G3X+prK73a4wBuOaHRc=".into(),
-            tls_client_extensions_sha1: "OWFiM2I5ZDc0YWI0YWYzZmFkMGU0ZjhlYjhiYmVkMjgxNTU5YTU2Mg=="
-                .into(),
-            tls_client_hello_length: 508,
         };
         let input = br#"
         {
@@ -38,9 +35,6 @@ mod tests {
     fn test_parse_fingerprint_rfc_3164() {
         let expected = TlsFingerprint {
             tls_client_ciphers_sha1: "GXSPDLP4G3X+prK73a4wBuOaHRc=".into(),
-            tls_client_extensions_sha1: "OWFiM2I5ZDc0YWI0YWYzZmFkMGU0ZjhlYjhiYmVkMjgxNTU5YTU2Mg=="
-                .into(),
-            tls_client_hello_length: 508,
         };
         let input = br#"
         <134>Jan 12 12:34:56 localhost nginx:
@@ -60,9 +54,6 @@ mod tests {
     fn test_parse_fingerprint_rfc_5424() {
         let expected = TlsFingerprint {
             tls_client_ciphers_sha1: "GXSPDLP4G3X+prK73a4wBuOaHRc=".into(),
-            tls_client_extensions_sha1: "OWFiM2I5ZDc0YWI0YWYzZmFkMGU0ZjhlYjhiYmVkMjgxNTU5YTU2Mg=="
-                .into(),
-            tls_client_hello_length: 508,
         };
         let input = br#"
         <134>1 2026-01-12T12:34:56.789Z localhost nginx 12345 access -
